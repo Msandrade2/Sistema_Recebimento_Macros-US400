@@ -186,7 +186,7 @@ def index():
                 try:
                     network_path = os.environ.get(
                         'MACRO_PATH',
-                        r"C:\Users\a9ww9zz\OneDrive - 3M\Desktop\Recebimento 2.0\output"
+                        r"C:\Users\a9ww9zz\Desktop\Recebimento 2.0\output"
                     )
                     os.makedirs(network_path, exist_ok=True)
                     filename = "macro_final.mac"
