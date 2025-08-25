@@ -83,6 +83,7 @@ A aplicação estará disponível em:
 O sistema está configurado para funcionar com as impressoras Zebra abaixo:
 - BRTEMAN01
 - BRTEMAN02
+
 Você pode editar o arquivo etiquetaszpl.py para adicionar ou modificar as configurações de IP, margens, e layout da etiqueta.
 
 
