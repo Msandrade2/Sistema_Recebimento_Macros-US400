@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="static/5.png" sizes="200x2000" type="image/x-icon" />
+  <title>Gerenciamento de Movimentações</title>
+  <link rel="stylesheet" href="static/style.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+
+</head>
+
+<body class="bg-light">
+  <!-- Botões de controle -->
+  <div class="position-absolute top-0 end-0 p-3 d-flex flex-column align-items-end" style="z-index: 1100">
+    <button id="btnAddUsuario" class="btn btn-outline-secondary mb-2" onclick="abrirModalID()">
+      <i class="bi bi-person-plus"></i>
+    </button>
+    <button id="btnprint" class="btn btn-outline-secondary mb-2" onclick="AlterarPrint()">
+      <i class="bi bi-printer"></i>
+    </button>
+    <button id="btnLogin" class="btn btn-outline-light " onclick="abrirPopupLogin()">
+      <i class="bi bi-box-arrow-in-right"></i>
+    </button>
+    <button id="btnLogout" class="btn btn-outline-danger d-none" onclick="logoutUsuario()">
+      <i class="bi bi-box-arrow-left"></i>
+    </button>
+  </div>
+
+  <!-- Container principal -->
+  <div class="container mt-5">
+    <h2 class="text-center mb-4">Gerenciamento de Movimentações</h2>
+    <p class="text-center text-muted mb-4">
+      Conferências armazenadas: <span id="macro-count">{{ macro_count }}</span>
+    </p>
+
+  
+    <!-- Formulário principal -->
+    <form method="post" id="mainForm" class="row g-4">
+      <div class="col-md-6">
+        <label for="armazem" class="form-label">Armazém</label>
+        <input type="text" name="Armazem" id="armazem" class="form-control" maxlength="2" placeholder="Nome do armazém" required />
+      </div>
+      <div class="col-md-6">
+        <label for="item" class="form-label">Item</label>
+        <input type="text" name="item" id="item" class="form-control" placeholder="Código do Item" required />
+      </div>
+      <div class="col-md-6">
+        <label for="lote" class="form-label">Lote</label>
+        <input type="text" name="lote" id="lote" class="form-control" placeholder="Número do Lote" required />
+      </div>
+      <div class="col-md-6">
+        <label for="movimentacao" class="form-label">Movimentação</label>
+        <input type="text" name="Mov" id="movimentacao" class="form-control" placeholder="Número da Movimentação" required />
+      </div>
+      <div class="col-md-4">
+        <label for="volume" class="form-label">Volume</label>
+        <input type="text" name="Volume" id="volume" class="form-control" placeholder="Volume" required />
+      </div>
+      <div class="col-md-4">
+        <label for="qud" class="form-label">QUD</label>
+        <input type="text" name="QUD" id="qud" class="form-control" placeholder="Ex: 10" required />
+      </div>
+      
+      <!-- Botões -->
+      <div class="col-12 d-flex justify-content-center gap-3 mt-4">
+        <button type="submit" name="action" value="consultar" class="btn btn-primary">
+          <i class="bi bi-search me-2"></i>Consultar
+        </button>
+        <button type="submit" name="action" value="gravar" class="btn btn-success">
+          <i class="bi bi-save me-2"></i>Gravar Macro
+        </button>
+      </div>
+       <!-- Modal de Seleção de Impressora -->
+      <div class="modal fade" id="modalSelecionarImpressora" tabindex="-1" aria-labelledby="modalSelecionarImpressoraLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content text-dark">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalSelecionarImpressoraLabel">Selecionar Impressora</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+              <label for="selectImpressora" class="form-label">Escolha a impressora:</label>
+              <select class="form-select" id="selectImpressora" name="Impressora">
+                <option value="BRTEMAN01">BRTEMAN01</option>
+                <option value="BRTEMAN02">BRTEMAN02</option>
+              </select>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" onclick="confirmarImpressora()">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="infoImpressoraSelecionada" class="text-in text-muted fst-italic font-monospace"></div>
+      <input type="hidden" name="usuario_id" value="{{ session.get('usuario_id', '') }}">
+      <input type="hidden" name="action" id="formAction" value="">
+      <input type="hidden" name="impressora" id="inputImpressoraSelecionada">
+      
+    </form>
+  </div>
+  
+  <!-- Overlay de login -->
+  <div id="overlay" class="d-flex">
+    <div>Por favor, faça login para continuar</div>
+  </div>
+
+    <div
+      class="modal fade"
+      id="modalIdUsuario"
+      tabindex="-1"
+      aria-labelledby="modalIdUsuarioLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-dark">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalIdUsuarioLabel">Informe seu ID</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Fechar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <input
+              type="text"
+              id="inputIdUsuario"
+              class="form-control"
+              placeholder="Digite seu ID"
+            />
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="verificarID()"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="modalUsuarioForm"
+      tabindex="-1"
+      aria-labelledby="modalUsuarioTitulo"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-dark">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalUsuarioTitulo">Cadastrar Novo Usuário</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Fechar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="formId" />
+            <div class="mb-3">
+            <label for="formNome" class="form-label">Nome</label>
+            <input
+                type="text"
+                id="formNome"
+                class="form-control"
+                placeholder="Digite o nome"
+                required
+            />
+            </div>
+            <div class="mb-3">
+              <label for="formUpin" class="form-label">Upin</label>
+              <input
+                type="text"
+                id="formUpin"
+                class="form-control"
+                placeholder="Digite o Upin"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="formSenha" class="form-label">Senha do BPCS</label>
+              <input
+                type="password"
+                id="formSenha"
+                class="form-control"
+                placeholder="Digite a senha do BPCS"
+                required
+              />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="salvarUsuario()"
+            >
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de logout com sucesso -->
+<div class="modal fade" id="modalLogoutSucesso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-dark">
+      <div class="modal-header">
+        <h5 class="modal-title">Logout</h5>
+      </div>
+      <div class="modal-body">
+        Logout efetuado com sucesso.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btnLogoutConfirm">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Erro Genérico -->
+<div class="modal fade" id="modalErro" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-dark">
+      <div class="modal-header bg-error-claro">
+      </div>
+      <div class="modal-body" id="modalErroMensagem">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div class="modal fade" id="modalSucesso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-dark">
+      <div class="modal-header bg-success-claro">
+      </div>
+      <div class="modal-body" id="modalSucessoMensagem">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal de Login -->
+<div class="modal fade" id="modalLogin" tabindex="-1" aria-labelledby="modalLoginLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-dark">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalLoginLabel">Login</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <input
+          type="text"
+          id="inputLoginID"
+          class="form-control"
+          placeholder="Digite seu ID"
+        />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="confirmarLogin()">Entrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div
+      class="modal fade"
+      id="modalCubagem"
+      tabindex="-1"
+      aria-labelledby="modalCubagemTitulo"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-dark">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalCubagemTitulo">Preencher Cubagem</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Fechar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="formCubagemId" />
+            <div class="mb-3">
+            <label for="itemInput" class="form-label">Item</label>
+            <input
+                type="text"
+                id="itemInput"
+                class="form-control"
+                placeholder="Digite o Item"
+                required
+            />
+            </div>
+            <div class="mb-3">
+              <label for="comprimentoInput" class="form-label">Comprimento</label>
+              <input
+                type="number"
+                id="comprimentoInput"
+                class="form-control"
+                placeholder="Digite o Comprimento"
+                required min="0"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="larguraInput" class="form-label">Largura</label>
+              <input
+                type="number"
+                id="larguraInput"
+                class="form-control"
+                placeholder="Digite a Largura"
+                required min="0"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="alturaInput" class="form-label">Altura</label>
+              <input
+                type="number"
+                id="alturaInput"
+                class="form-control"
+                placeholder="Digite a Altura"
+                required min="0"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="cxLastroInput" class="form-label">Caixas por Lastro</label>
+              <input
+                type="number"
+                id="cxLastroInput"
+                class="form-control"
+                placeholder="Digite a quantidade de Caixas por Lastro"
+                required min="0"
+              />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="enviarCubagem()"
+            >
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+<footer style="
+  position: fixed;
+  bottom: 10px;
+  right: 15px;
+  font-size: 0.85rem;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  user-select: none;
+  z-index: 1100;
+">
+  <i class="bi bi-code-slash"></i> Developed by Msandrade
+</footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let deveReenviarForm = false;
+
+      function clearForm() {
+        document.querySelectorAll('input[type="text"]').forEach((input) => (input.value = ""));
+        document.getElementById("radioSTD").checked = true; 
+        document.getElementById("armazem").focus();
+      }
+
+     
+      setTimeout(() => {
+        const alerts = document.querySelectorAll(".alert");
+        alerts.forEach((msg) => {
+          if (msg) {
+            const bsAlert = new bootstrap.Alert(msg);
+            bsAlert.close();
+          }
+        });
+      }, 20000); 
+
+    
+      document.getElementById("mainForm").addEventListener("submit", async function (event) {
+        const impressoraSalva = localStorage.getItem("impressoraSelecionada");
+        if (impressoraSalva) {
+          document.getElementById("inputImpressoraSelecionada").value = impressoraSalva;
+        }
+
+        const action = document.activeElement.value;
+        const item = document.getElementById("item").value.trim();
+        const loteInput = document.getElementById("lote");
+        let loteValue = loteInput.value.trim();
+
+        if (loteValue.length > 0 && loteValue[0] !== "2") {
+          loteValue = "2" + loteValue.slice(1);
+          loteInput.value = loteValue;
+        }
+
+        if (action === "consultar") {
+          event.preventDefault();
+
+          const prosseguir = await verificarItemCubagem(item);
+
+          if (prosseguir === true) {
+            document.getElementById("formAction").value = "consultar";
+            this.submit();
+          } else {
+            deveReenviarForm = true;
+          }
+        }
+      });
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("download")) {
+        const filename = params.get("download");
+        const a = document.createElement("a");
+        a.href = `/static_download/${filename}`;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+     
+      document.querySelectorAll("button[type=submit]").forEach((button) => {
+        button.addEventListener("click", function () {
+          const action = this.value;
+          const inputs = document.querySelectorAll("input[type=text]");
+
+          if (action === "consultar") {
+            inputs.forEach((input) => input.setAttribute("required", "required"));
+          } else {
+            inputs.forEach((input) => input.removeAttribute("required"));
+          }
+        });
+      });
+
+
+      document.addEventListener("DOMContentLoaded", (event) => {
+        document.getElementById("armazem").focus();
+      });
+
+      function abrirModalID() {
+        const modal = new bootstrap.Modal(document.getElementById("modalIdUsuario"));
+        modal.show();
+      }
+
+      function verificarID() {
+        const id = document.getElementById("inputIdUsuario").value.trim();
+        if (!id) return alert("Informe o ID");
+
+        fetch("/verificar_usuario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            const modalID = bootstrap.Modal.getInstance(document.getElementById("modalIdUsuario"));
+            modalID.hide();
+
+            document.getElementById("formId").value = id;
+            document.getElementById("formUpin").value = data.upin || "";
+            document.getElementById("formNome").value = data.nome || "";
+            document.getElementById("formSenha").value = "";
+
+            if (data.id) {
+              document.getElementById("formUpin").disabled = true;
+              document.getElementById("formNome").disabled = true;
+              document.getElementById("modalUsuarioTitulo").innerText = "Editar Usuário";
+            } else {
+              document.getElementById("formUpin").disabled = false;
+              document.getElementById("formNome").disabled = false;
+              document.getElementById("modalUsuarioTitulo").innerText = "Cadastrar Novo Usuário";
+            }
+
+            new bootstrap.Modal(document.getElementById("modalUsuarioForm")).show();
+          });
+      }
+
+      function salvarUsuario() {
+        const id = document.getElementById("formId").value.trim();
+        const upin = document.getElementById("formUpin").value.trim();
+        const senha = document.getElementById("formSenha").value.trim();
+        const nome = document.getElementById("formNome").value.trim(); 
+
+        if (!senha || (!upin && !document.getElementById("formUpin").disabled) || !nome) {
+            return alert("Preencha todos os campos obrigatórios.");
+        }
+
+        fetch("/salvar_usuario", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, upin, senha, nome }) 
+        })
+        .then(res => res.json())
+        .then(data => {
+            const modalForm = bootstrap.Modal.getInstance(document.getElementById("modalUsuarioForm"));
+            modalForm.hide();
+            alert(data.status === "atualizado" ? "Senha atualizada!" : "Usuário criado com sucesso!");
+        });
+        }
+
+      function abrirPopupLogin() {
+  const modalLogin = new bootstrap.Modal(document.getElementById("modalLogin"));
+  modalLogin.show();
+}
+
+        function confirmarLogin() {
+  const id = document.getElementById("inputLoginID").value.trim();
+  if (!id) {
+  const modalLogin = bootstrap.Modal.getInstance(document.getElementById("modalLogin"));
+  if (modalLogin) modalLogin.hide();  
+  setTimeout(() => {
+    mostrarErroModal("Por favor, informe seu ID.");
+  }, 300); 
+  return;
+}
+
+  fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  })
+    .then((res) => {
+      return res.json().then(data => ({ status: res.status, body: data }));
+    })
+    .then(({ status, body }) => {
+      const modal = bootstrap.Modal.getInstance(document.getElementById("modalLogin"));
+      modal.hide(); 
+
+      if (status === 200 && body.success) {
+        liberarAplicacao();
+      } else {
+        mostrarErroModal("Usuário sem credencial, favor realizar cadastro.");
+      }
+    })
+    .catch((err) => {
+      console.error("Erro no login:", err);
+      mostrarErroModal("Erro ao realizar login. Tente novamente.");
+    });
+}
+
+
+document.getElementById('modalLogin').addEventListener('shown.bs.modal', function () {
+  document.getElementById('inputLoginID').value = '';
+  document.getElementById('inputLoginID').focus();
+});
+
+
+      function setMainFormEnabled(enabled) {
+          document.querySelectorAll('#mainForm input, #mainForm button').forEach(element => {
+              element.disabled = !enabled;
+          });
+         
+          document.querySelectorAll('#mainForm .form-check-input').forEach(input => {
+              input.disabled = !enabled;
+          });
+      }
+
+      function liberarAplicacao() {
+        document.getElementById("overlay").style.display = "none";
+        document.getElementById("btnLogin").classList.add("d-none"); 
+        document.getElementById("btnLogout").classList.remove("d-none"); 
+        document.getElementById("btnAddUsuario").disabled = false; 
+        setMainFormEnabled(true); 
+        const overlay = document.getElementById("overlay");
+            if (overlay) {
+            overlay.remove(); 
+            }
+      }
+
+      async function logoutUsuario() {
+  try {
+    const res = await fetch("/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!res.ok) throw new Error("Erro na resposta do servidor");
+
+    const data = await res.json();
+    if (data.success) {
+      const modal = new bootstrap.Modal(document.getElementById("modalLogoutSucesso"));
+      modal.show();
+      document.getElementById("btnLogoutConfirm").onclick = () => {
+        modal.hide();
+        window.location.reload();
+      };
+    } else {
+      mostrarErroModal(data.message || "Logout falhou.");
+    }
+
+  } catch (err) {
+    console.error("Erro no logout:", err);
+    mostrarErroModal("Erro ao comunicar com o servidor. Verifique sua conexão e tente novamente.");
+  }
+}
+    
+    document.addEventListener("DOMContentLoaded", async () => {
+        document.getElementById("btnAddUsuario").disabled = false; 
+
+        try {
+            
+            const response = await fetch('/verificar_status_login');
+            const data = await response.json();
+
+            if (data.logged_in) {
+                liberarAplicacao(); 
+            } else {
+                document.getElementById("overlay").style.display = "flex";
+                document.getElementById("btnLogin").classList.remove("d-none"); 
+                document.getElementById("btnLogout").classList.add("d-none"); 
+                setMainFormEnabled(false); 
+            }
+        } catch (error) {
+            console.error("Erro ao verificar status de login:", error);
+            document.getElementById("overlay").style.display = "flex";
+            document.getElementById("btnLogin").classList.remove("d-none");
+            document.getElementById("btnLogout").classList.add("d-none");
+            setMainFormEnabled(false);
+        }
+    });
+    function mostrarErroModal(mensagem) {
+  const msgContainer = document.getElementById("modalErroMensagem");
+  if (msgContainer) msgContainer.textContent = mensagem;
+
+  const modalErro = new bootstrap.Modal(document.getElementById("modalErro"));
+  modalErro.show();
+}
+
+async function verificarItemCubagem(item) {
+    const res = await fetch("/verificar_item_cubagem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: item })
+    });
+
+    const data = await res.json();
+
+    if (data.necessitaPreenchimento) {
+        preencherFormularioCubagem(data.dados);
+        new bootstrap.Modal(document.getElementById("modalCubagem")).show();
+    }
+}
+
+function preencherFormularioCubagem(dados) {
+    document.getElementById("itemInput").value = dados.Item || "";
+    document.getElementById("comprimentoInput").value = dados.Comprimento || "";
+    document.getElementById("larguraInput").value = dados.Largura || "";
+    document.getElementById("alturaInput").value = dados.Altura || "";
+    document.getElementById("cxLastroInput").value = dados.Cx_Lastro || "";
+}
+
+async function enviarCubagem() {
+  const dados = {
+    Item: document.getElementById("itemInput").value,
+    Comprimento: parseFloat(document.getElementById("comprimentoInput").value),
+    Largura: parseFloat(document.getElementById("larguraInput").value),
+    Altura: parseFloat(document.getElementById("alturaInput").value),
+    Cubagem: parseFloat((
+      parseFloat(document.getElementById("comprimentoInput").value || 0) *
+      parseFloat(document.getElementById("larguraInput").value || 0) *
+      parseFloat(document.getElementById("alturaInput").value || 0)
+    ).toFixed(4)),
+    Cx_Lastro: parseInt(document.getElementById("cxLastroInput").value)
+  };
+
+  try {
+    const res = await fetch("/salvar_item_cubagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dados)
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert("Informações salvas!");
+      bootstrap.Modal.getInstance(document.getElementById("modalCubagem")).hide();
+
+      if (deveReenviarForm) {
+        deveReenviarForm = false;
+        document.getElementById("formAction").value = "consultar";  
+        document.getElementById("mainForm").submit();
+        document.getElementById("formAction").value = "";
+      }
+
+    } else {
+      mostrarErroModal("Erro ao salvar a cubagem. Tente novamente.");
+    }
+  } catch (error) {
+    console.error("Erro ao salvar cubagem:", error);
+    mostrarErroModal("Erro de comunicação com o servidor.");
+  }
+}
+
+let cubagemVerificada = false;
+
+async function verificarItemCubagem(item) {
+  try {
+    const res = await fetch("/verificar_item_cubagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item: item })
+    });
+
+    const data = await res.json();
+
+    if (data.necessitaPreenchimento) {
+      preencherFormularioCubagem(data.dados);
+      new bootstrap.Modal(document.getElementById("modalCubagem")).show();
+      deveReenviarForm = true;  // Marcar para reenviar após salvar
+      return false; // Interrompe agora
+    }
+
+    return true; // Pode continuar direto
+  } catch (err) {
+    mostrarErroModal("Erro ao verificar cubagem do item.");
+    console.error(err);
+    return false;
+  }
+}
+
+
+const erro = "{{ error if error else '' }}";
+  if (erro && erro !== "None") {
+    document.getElementById('modalErroMensagem').innerText = erro;
+    const erroModal = new bootstrap.Modal(document.getElementById('modalErro'));
+    erroModal.show();
+  }
+
+
+const sucesso = "{{ success if success else '' }}";
+  if (sucesso && sucesso !== "None") {
+    document.getElementById('modalSucessoMensagem').innerText = sucesso;
+    const sucessoModal = new bootstrap.Modal(document.getElementById('modalSucesso'));
+    sucessoModal.show();
+  }  
+
+function AlterarPrint() {
+  const modal = new bootstrap.Modal(document.getElementById('modalSelecionarImpressora'));
+  modal.show();
+}  
+
+function confirmarImpressora() {
+  const impressora = document.getElementById("selectImpressora").value;
+
+  // Armazena no localStorage para uso posterior
+  localStorage.setItem("impressoraSelecionada", impressora);
+
+  bootstrap.Modal.getInstance(document.getElementById('modalSelecionarImpressora')).hide();
+
+  alert(`Impressora selecionada: ${impressora}`);
+}
+
+const impressoraSalva = localStorage.getItem("impressoraSelecionada");
+const impressorasDisponiveis = ["BRTEMAN01", "BRTEMAN02"];
+
+//const impressoraSelecionada = localStorage.getItem("impressoraSelecionada");
+//if (impressoraSelecionada) {
+//  document.getElementById("infoImpressoraSelecionada").innerText = `Impressora atual: ${impressoraSelecionada}`;
+//}
+    </script>
+</body>
+</html>

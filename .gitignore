@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.png
+*.bat
+*.pptx
+
+# Ambiente virtual
+venv/
+.env
+
+# VSCode
+.vscode/
+
+# Arquivos de saída
+output/
+*.mac
